@@ -113,6 +113,13 @@ gates:
     synthesize:
       mode: age
       max_age_hours: 336
+tracking:
+  enabled: true
+  path: docs/metrics/skills.jsonl
+  rotation: monthly
+  retention_months: 12
+  session_file: .aw/session
+  session_ttl_hours: 8
 telemetry:
   enabled: true
   path: docs/metrics/events.jsonl

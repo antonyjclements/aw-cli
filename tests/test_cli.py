@@ -6,14 +6,30 @@ import io
 import json
 import tempfile
 import unittest
+from collections import Counter
 from contextlib import redirect_stdout
+from datetime import date, datetime
 from pathlib import Path
 from unittest import mock
 
 from aw_cli.cli import main
 from aw_cli.config import DEFAULT_SOURCE_URL
 from aw_cli.commands.init_repo import run as init_run
-from aw_cli.commands.metrics import _build_metrics_app, load_events
+from aw_cli.commands.metrics import (
+    MetricsDataset,
+    MetricEvent,
+    SkillEvent,
+    _build_metrics_app,
+    daily_activity,
+    hourly_activity,
+    load_dataset,
+    load_events,
+    load_skill_events,
+    render_activity_heatmap,
+    render_hourly_line_chart,
+    render_workflow_compliance,
+    workflow_session_counts,
+)
 from aw_cli.commands.status import run as status_run
 from aw_cli.installer import install_aw_skills
 from aw_cli.workflow_config import enable_default_aw_features
@@ -74,6 +90,59 @@ class CliTests(unittest.TestCase):
             self.assertEqual(events[0].event, "review")
             self.assertEqual(events[0].detail, "code")
 
+    def test_load_dataset_separates_gate_events_from_skill_events(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            metrics_dir = tmp_path / "docs" / "metrics"
+            metrics_dir.mkdir(parents=True)
+            gate = {"ts": "2026-08-13T02:35:00.000Z", "event": "review", "detail": "code", "source": "aw-gate"}
+            skill = {
+                "ts": "2026-08-13T03:10:00.000Z",
+                "session_id": "session-1",
+                "skill": "aw-review",
+                "workflow_step": "review",
+                "source": "skill",
+            }
+            (metrics_dir / "events-2026-08.jsonl").write_text(json.dumps(gate) + "\n", encoding="utf-8")
+            (metrics_dir / "skills-2026-08.jsonl").write_text(json.dumps(skill) + "\n", encoding="utf-8")
+
+            dataset = load_dataset(metrics_dir)
+
+            self.assertEqual(len(dataset.events), 1)
+            self.assertEqual(len(dataset.skills), 1)
+            self.assertEqual(load_skill_events(metrics_dir)[0].session_id, "session-1")
+
+    def test_activity_charts_include_hourly_and_daily_counts(self) -> None:
+        first = datetime.fromisoformat("2026-08-13T02:10:00+00:00")
+        second = datetime.fromisoformat("2026-08-13T14:10:00+00:00")
+        dataset = MetricsDataset(
+            events=[MetricEvent(first, "review", "code", "aw-gate")],
+            skills=[
+                SkillEvent(second, "session-1", "aw-review", "review", "skill"),
+                SkillEvent(second, "session-1", "aw-capture", "capture", "skill"),
+            ],
+        )
+
+        self.assertEqual(hourly_activity(dataset), Counter({14: 2, 2: 1}))
+        self.assertEqual(daily_activity(dataset), Counter({date(2026, 8, 13): 3}))
+
+    def test_renderers_show_hourly_heatmap_and_session_compliance(self) -> None:
+        skills = [
+            SkillEvent(None, "s1", "aw-review", "review", "skill"),
+            SkillEvent(None, "s1", "aw-capture", "capture", "skill"),
+            SkillEvent(None, "s2", "aw-review", "review", "skill"),
+            SkillEvent(None, "s2", "aw-check-workflow-compliance", "check_workflow_compliance", "skill"),
+            SkillEvent(None, "s3", "aw-work", "work", "skill"),
+        ]
+        total, counts = workflow_session_counts(skills)
+
+        self.assertEqual(total, 3)
+        self.assertIn("review", render_workflow_compliance(total, counts))
+        self.assertIn("2/3", render_workflow_compliance(total, counts))
+        self.assertIn("Activity by hour", render_hourly_line_chart(Counter({2: 3, 14: 1})))
+        self.assertIn("Peak: 02:00", render_hourly_line_chart(Counter({2: 3, 14: 1})))
+        self.assertIn("Activity heatmap", render_activity_heatmap(Counter({date(2026, 8, 13): 4}), today=date(2026, 8, 13), weeks=2))
+
     def test_metrics_app_compose_accepts_widget_classes(self) -> None:
         if importlib.util.find_spec("textual") is None:
             self.skipTest("textual is not installed")
@@ -89,7 +158,7 @@ class CliTests(unittest.TestCase):
 
             widgets = list(app.compose())
 
-            self.assertGreaterEqual(len(widgets), 5)
+            self.assertGreaterEqual(len(widgets), 7)
 
     def test_status_reports_missing_repo_files(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
