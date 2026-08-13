@@ -1,0 +1,2 @@
+docs/metrics/events*.jsonl merge=union
+docs/metrics/skills*.jsonl merge=union

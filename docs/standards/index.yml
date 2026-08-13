@@ -1,0 +1,25 @@
+standards:
+  - path: docs/standards/coding-approach.md
+    title: Coding Approach
+    tags:
+      - implementation
+      - simplicity
+      - code-quality
+  - path: docs/standards/traceability.md
+    title: Spec Traceability
+    tags:
+      - specs
+      - tests
+      - workflow
+  - path: docs/standards/behavior-pinning.md
+    title: Behavior Pinning
+    tags:
+      - testing
+      - workflow
+      - characterization
+  - path: docs/standards/e2e-coverage.md
+    title: End-to-End Coverage
+    tags:
+      - testing
+      - specs
+      - workflow

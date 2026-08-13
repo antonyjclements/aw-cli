@@ -1,0 +1,7 @@
+.aw-gate-state.json
+.aw/receipts/
+.aw-org-cache/
+.aw/tmp/
+.aw/workflow-trace.jsonl
+.aw/pin/
+.aw/session
