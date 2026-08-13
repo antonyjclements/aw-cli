@@ -14,3 +14,7 @@
 {"ts":"2026-08-13T02:48:53.745Z","event":"capture","detail":null,"source":"aw-gate"}
 {"ts":"2026-08-13T02:49:02.671Z","event":"check_workflow_compliance","detail":null,"source":"aw-gate"}
 {"ts":"2026-08-13T02:49:14.609Z","event":"synthesize","detail":null,"source":"aw-gate"}
+{"ts":"2026-08-13T02:57:39.443Z","event":"review","detail":"code","source":"aw-gate"}
+{"ts":"2026-08-13T02:57:49.624Z","event":"capture","detail":null,"source":"aw-gate"}
+{"ts":"2026-08-13T02:57:56.267Z","event":"check_workflow_compliance","detail":null,"source":"aw-gate"}
+{"ts":"2026-08-13T02:58:07.234Z","event":"synthesize","detail":null,"source":"aw-gate"}
