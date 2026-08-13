@@ -66,8 +66,8 @@ def _build_metrics_app():
     from textual.widgets import DataTable, Footer, Header, Label, Static
 
     class BarChart(Static):
-        def __init__(self, title: str, counts: Counter[str]) -> None:
-            super().__init__()
+        def __init__(self, title: str, counts: Counter[str], **kwargs: object) -> None:
+            super().__init__(**kwargs)
             self.title = title
             self.counts = counts
 

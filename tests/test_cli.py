@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import io
 import json
 import tempfile
@@ -12,7 +13,7 @@ from unittest import mock
 from aw_cli.cli import main
 from aw_cli.config import DEFAULT_SOURCE_URL
 from aw_cli.commands.init_repo import run as init_run
-from aw_cli.commands.metrics import load_events
+from aw_cli.commands.metrics import _build_metrics_app, load_events
 from aw_cli.commands.status import run as status_run
 from aw_cli.installer import install_aw_skills
 from aw_cli.workflow_config import enable_default_aw_features
@@ -72,6 +73,23 @@ class CliTests(unittest.TestCase):
             self.assertEqual(len(events), 1)
             self.assertEqual(events[0].event, "review")
             self.assertEqual(events[0].detail, "code")
+
+    def test_metrics_app_compose_accepts_widget_classes(self) -> None:
+        if importlib.util.find_spec("textual") is None:
+            self.skipTest("textual is not installed")
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            metrics_dir = tmp_path / "docs" / "metrics"
+            metrics_dir.mkdir(parents=True)
+            payload = {"ts": "2026-08-13T00:35:35.295Z", "event": "review", "detail": "code", "source": "aw-gate"}
+            (metrics_dir / "events-2026-08.jsonl").write_text(json.dumps(payload) + "\n", encoding="utf-8")
+
+            MetricsApp = _build_metrics_app()
+            app = MetricsApp(tmp_path)
+
+            widgets = list(app.compose())
+
+            self.assertGreaterEqual(len(widgets), 5)
 
     def test_status_reports_missing_repo_files(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
