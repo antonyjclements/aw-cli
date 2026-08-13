@@ -15,6 +15,7 @@ SKILL_STEP_ALIASES = {
     "aw-capture": "capture",
     "aw-synthesize-memory": "synthesize",
 }
+HEATMAP_BG_COLORS = ("#161b22", "#0e4429", "#006d32", "#26a641", "#39d353")
 
 
 @dataclass(frozen=True)
@@ -145,18 +146,16 @@ def render_hourly_line_chart(counts: Counter[int], *, height: int = 6) -> str:
 
 def render_activity_heatmap(counts: Counter[date], *, today: date | None = None, weeks: int = 26) -> str:
     today = today or date.today()
-    start = today - timedelta(days=(weeks * 7) - 1)
-    start -= timedelta(days=start.weekday())
-    days = [start + timedelta(days=offset) for offset in range((weeks + 1) * 7)]
-    max_count = max((counts.get(day, 0) for day in days), default=0)
+    days = _heatmap_days(today, weeks)
+    max_count = _heatmap_max_count(counts, days)
 
-    rows = [f"Activity heatmap ({weeks} weeks)", ""]
+    rows = [_heatmap_title(weeks), ""]
     rows.append("      " + _month_labels(days))
     for weekday, label in enumerate(("Mon", "", "Wed", "", "Fri", "", "")):
         cells = []
         for week in range(weeks + 1):
             day = days[week * 7 + weekday]
-            cells.append(_heat_cell(counts.get(day, 0), max_count))
+            cells.append(_plain_heat_cell(counts.get(day, 0), max_count))
         rows.append(f"{label:>3}   " + " ".join(cells))
     rows.append("")
     rows.append("      Less ░ ▒ ▓ █ More")
@@ -179,8 +178,8 @@ def run(args: argparse.Namespace) -> int:
     try:
         MetricsApp = _build_metrics_app()
     except ModuleNotFoundError as exc:
-        if exc.name == "textual":
-            print('Textual is required for aw metrics. Install with: python3 -m pip install -e ".[dev]"')
+        if exc.name in {"textual", "textual_plot"}:
+            print('Textual and textual-plot are required for aw metrics. Install with: python3 -m pip install -e ".[dev]"')
             return 1
         raise
     MetricsApp(args.repo.expanduser().resolve()).run()
@@ -231,24 +230,101 @@ def _month_labels(days: list[date]) -> str:
 
 
 def _heat_cell(count: int, max_count: int) -> str:
+    level = _heat_level(count, max_count)
+    return ("░", "▒", "▓", "█", "█")[level]
+
+
+def _heat_level(count: int, max_count: int) -> int:
     if count <= 0 or max_count <= 0:
-        return "░"
+        return 0
     ratio = count / max_count
-    if ratio < 0.34:
+    if ratio < 0.25:
+        return 1
+    if ratio < 0.5:
+        return 2
+    if ratio < 0.75:
+        return 3
+    return 4
+
+
+def _heat_style(count: int, max_count: int) -> str:
+    return f"on {HEATMAP_BG_COLORS[_heat_level(count, max_count)]}"
+
+
+def _heatmap_days(today: date, weeks: int) -> list[date]:
+    start = today - timedelta(days=(weeks * 7) - 1)
+    start -= timedelta(days=start.weekday())
+    return [start + timedelta(days=offset) for offset in range((weeks + 1) * 7)]
+
+
+def _heatmap_max_count(counts: Counter[date], days: list[date]) -> int:
+    return max((counts.get(day, 0) for day in days), default=0)
+
+
+def _heatmap_title(weeks: int) -> str:
+    return f"Activity heatmap ({weeks} weeks)"
+
+
+def _plain_heat_cell(count: int, max_count: int) -> str:
+    level = _heat_level(count, max_count)
+    if level == 0:
+        return "░"
+    if level == 1:
         return "▒"
-    if ratio < 0.67:
+    if level in {2, 3}:
         return "▓"
     return "█"
 
 
 def _build_metrics_app():
     from textual.app import App, ComposeResult
-    from textual.containers import Grid
+    from textual.containers import Grid, Vertical
     from textual.widgets import Footer, Header, Label, Static
+    from textual_plot import PlotWidget
+    from rich.text import Text
 
     class ChartPanel(Static):
         def __init__(self, content: str, **kwargs: object) -> None:
             super().__init__(content, **kwargs)
+
+    class HeatmapPanel(Static):
+        def __init__(self, counts: Counter[date], weeks: int = 26, **kwargs: object) -> None:
+            super().__init__(**kwargs)
+            self.counts = counts
+            self.weeks = weeks
+
+        def render(self) -> Text:
+            today = date.today()
+            days = _heatmap_days(today, self.weeks)
+            max_count = _heatmap_max_count(self.counts, days)
+            text = Text()
+            text.append(_heatmap_title(self.weeks), style="bold")
+            text.append("\n\n")
+            text.append("      " + _month_labels(days) + "\n", style="dim")
+            for weekday, label in enumerate(("Mon", "", "Wed", "", "Fri", "", "")):
+                text.append(f"{label:>3}   ", style="dim")
+                for week in range(self.weeks + 1):
+                    day = days[week * 7 + weekday]
+                    text.append("  ", style=_heat_style(self.counts.get(day, 0), max_count))
+                    text.append(" ")
+                text.append("\n")
+            text.append("\n      Less ", style="dim")
+            for index, color in enumerate(HEATMAP_BG_COLORS):
+                text.append("  ", style=f"on {color}")
+                if index < len(HEATMAP_BG_COLORS) - 1:
+                    text.append(" ")
+            text.append(" More", style="dim")
+            return text
+
+    class PlotPanel(Vertical):
+        def __init__(self, title: str, plot_id: str, **kwargs: object) -> None:
+            super().__init__(**kwargs)
+            self.title = title
+            self.plot_id = plot_id
+
+        def compose(self) -> ComposeResult:
+            yield Label(self.title, classes="plot-title")
+            yield PlotWidget(id=self.plot_id)
 
     class MetricsApp(App[None]):
         CSS = """
@@ -275,6 +351,19 @@ def _build_metrics_app():
             height: 100%;
         }
 
+        PlotPanel {
+            height: 100%;
+        }
+
+        PlotWidget {
+            height: 1fr;
+        }
+
+        .plot-title {
+            height: 1;
+            text-style: bold;
+        }
+
         #heatmap {
             column-span: 2;
         }
@@ -293,12 +382,18 @@ def _build_metrics_app():
             yield Header(show_clock=True)
             yield Label(self._summary(sessions), id="summary")
             with Grid(id="dashboard"):
-                yield ChartPanel(render_hourly_line_chart(hourly_activity(self.dataset)), classes="panel")
-                yield ChartPanel(render_bar_chart("Gate events", event_counts(self.dataset.events)), classes="panel")
-                yield ChartPanel(render_bar_chart("Skill usage", skill_counts(self.dataset.skills)), classes="panel")
-                yield ChartPanel(render_workflow_compliance(sessions, compliance), classes="panel")
-                yield ChartPanel(render_activity_heatmap(daily_activity(self.dataset)), id="heatmap", classes="panel")
+                yield PlotPanel("Activity by hour", "hourly-plot", classes="panel")
+                yield PlotPanel("Gate events", "gate-events-plot", classes="panel")
+                yield PlotPanel("Skill usage", "skill-usage-plot", classes="panel")
+                yield PlotPanel("Workflow compliance by session", "workflow-compliance-plot", classes="panel")
+                yield HeatmapPanel(daily_activity(self.dataset), id="heatmap", classes="panel")
             yield Footer()
+
+        def on_mount(self) -> None:
+            self._plot_hourly_activity()
+            self._plot_gate_events()
+            self._plot_skill_usage()
+            self._plot_workflow_compliance()
 
         def _summary(self, sessions: int) -> str:
             timestamps = _all_timestamps(self.dataset)
@@ -308,5 +403,46 @@ def _build_metrics_app():
                 f"{len(self.dataset.events)} gate events, {len(self.dataset.skills)} skill events, "
                 f"{sessions} tracked session(s) from {min(timestamps).date()} to {max(timestamps).date()}"
             )
+
+        def _plot_hourly_activity(self) -> None:
+            counts = hourly_activity(self.dataset)
+            plot = self.query_one("#hourly-plot", PlotWidget)
+            plot.clear()
+            x = list(range(24))
+            y = [counts.get(hour, 0) for hour in x]
+            plot.plot(x=x, y=y, line_style="bright_green", label="activity")
+            plot.set_xlabel("Hour of day")
+            plot.set_ylabel("Events")
+            plot.set_xlimits(0, 23)
+            plot.set_ylimits(ymin=0)
+
+        def _plot_gate_events(self) -> None:
+            self._plot_bar("#gate-events-plot", event_counts(self.dataset.events), "Gate", "Events")
+
+        def _plot_skill_usage(self) -> None:
+            self._plot_bar("#skill-usage-plot", skill_counts(self.dataset.skills), "Skill", "Invocations")
+
+        def _plot_workflow_compliance(self) -> None:
+            sessions, counts = workflow_session_counts(self.dataset.skills)
+            percentages = Counter(
+                {
+                    step: round((counts.get(step, 0) / sessions) * 100) if sessions else 0
+                    for step in WORKFLOW_STEPS
+                }
+            )
+            self._plot_bar("#workflow-compliance-plot", percentages, "Workflow step", "% sessions")
+
+        def _plot_bar(self, selector: str, counts: Counter[str], xlabel: str, ylabel: str) -> None:
+            plot = self.query_one(selector, PlotWidget)
+            plot.clear()
+            labels = [name for name, _ in counts.most_common(8)]
+            values = [counts[name] for name in labels]
+            if not labels:
+                labels = ["no data"]
+                values = [0]
+            plot.bar(labels, values, width=0.8, bar_style="bright_green", label=ylabel)
+            plot.set_xlabel(xlabel)
+            plot.set_ylabel(ylabel)
+            plot.set_ylimits(ymin=0)
 
     return MetricsApp

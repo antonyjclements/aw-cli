@@ -144,8 +144,8 @@ class CliTests(unittest.TestCase):
         self.assertIn("Activity heatmap", render_activity_heatmap(Counter({date(2026, 8, 13): 4}), today=date(2026, 8, 13), weeks=2))
 
     def test_metrics_app_compose_accepts_widget_classes(self) -> None:
-        if importlib.util.find_spec("textual") is None:
-            self.skipTest("textual is not installed")
+        if importlib.util.find_spec("textual") is None or importlib.util.find_spec("textual_plot") is None:
+            self.skipTest("textual and textual-plot are not installed")
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             metrics_dir = tmp_path / "docs" / "metrics"

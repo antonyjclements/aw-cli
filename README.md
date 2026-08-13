@@ -33,7 +33,7 @@ pipx uninstall aw-cli
 
 - `aw install` installs AW skills from `https://github.com/antonyjclements/augmented-workflow` into `~/.agents/skills` and links supported agent skill directories to that global installation.
 - `aw init` runs the AW repo installer from `https://github.com/antonyjclements/augmented-workflow` for the current directory with gates installed, skills skipped, and tracking, telemetry, trace, workflow trace, and behavior pins enabled by default.
-- `aw metrics` opens a Textual TUI over `docs/metrics/*.jsonl` with hourly activity, gate event bars, skill usage, workflow-session compliance, a GitHub-style activity heatmap, and recent activity.
+- `aw metrics` opens a Textual TUI over `docs/metrics/*.jsonl` with `textual-plot` hourly activity, gate event bars, skill usage, workflow-session compliance, and a GitHub-style activity heatmap.
 - `aw doctor` reports global skill installation health.
 - `aw status` reports the local repo installation state.
 
