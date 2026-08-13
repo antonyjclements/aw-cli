@@ -93,21 +93,28 @@ human_review:
   plan:
     reviewers: []
 gates:
-  enabled: false
+  enabled: true
   require_receipt: true
   state_file: .aw-gate-state.json
   checks:
     review:
-      max_age_hours: 24
+      mode: commit
+      paths:
+        - "(:glob)src/**/*.py"
+        - "(:glob)tests/**/*.py"
     capture:
-      max_age_hours: 168
+      mode: commit
+      paths:
+        - "(:glob)src/**/*.py"
+        - "(:glob)tests/**/*.py"
     check_workflow_compliance:
+      mode: age
       max_age_hours: 24
     synthesize:
       mode: age
       max_age_hours: 336
 telemetry:
-  enabled: false
+  enabled: true
   path: docs/metrics/events.jsonl
   rotation: monthly
   retention_months: 12
@@ -119,7 +126,7 @@ org_knowledge:
     learnings: learnings
     standards: standards
 trace:
-  enabled: false
+  enabled: true
   spec_paths:
     - "docs/features/*/spec.md"
   test_paths:
@@ -131,7 +138,7 @@ trace:
     - "src"
   require_code_anchor: false
 pin:
-  enabled: false
+  enabled: true
   manifest_paths:
     - "docs/features/*/behavior-pin.yml"
   worktree_dir: .aw/pin
@@ -143,7 +150,7 @@ e2e:
   test_paths: []
   run_scope: affected
 workflow_trace:
-  enabled: false
+  enabled: true
   path: .aw/workflow-trace.jsonl
   max_events: 10000
   max_bytes: 5242880
