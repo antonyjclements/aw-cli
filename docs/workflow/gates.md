@@ -139,6 +139,75 @@ put in a hook or CI job.
 - `--against worktree`: compare to the working tree (staged + unstaged). Use in a
   **pre-commit** hook so edits not yet committed are considered.
 
+When `docs/metrics/**` has staged, modified, or untracked files, `check` also
+prints a non-blocking warning. Those files are workflow exhaust produced by
+tracking and telemetry; commit them before opening a PR.
+
+`check` also validates the **learning audit trail** whenever `gates.enabled` is
+true, independently of what is configured under `gates.checks`. Every
+`docs/learnings/*.md` must carry a non-empty `derived-from`, and its
+`evidence-count` must equal the number of identifiers listed. A learning that
+cites no session cannot be corroborated, expired on schedule, or traced back to
+where the lesson came from.
+
+This runs here rather than only in `scripts/test-install.sh` because that script
+executes in the augmented-workflow repo and its test-install targets — never in
+your repo, which is where learnings actually accumulate.
+
+The usual cause of a failure is a learning written mid-session by
+`aw-capture learning`: the session log and its `YYYY-MM-DD-<slug>` identifier
+are not created until the session ends, so at capture time there was nothing to
+cite. Fix it by adding the identifier of the session the lesson came from, and
+correcting `evidence-count` to match. A repo with no `docs/learnings/`
+directory passes.
+
+Some learnings genuinely have no session to cite — those written before the repo
+adopted the memory loop, or imported from elsewhere. Exempt one by stating why,
+in the learning itself:
+
+```yaml
+derived-from: []
+audit-trail-exempt: predates the memory loop (2026-07-02); no session log exists to cite
+```
+
+The reason is required: `audit-trail-exempt:` with nothing after it exempts
+nothing. The exemption lives in the file rather than in a list inside the tool
+so that it travels with the artifact and has to be justified in the diff where a
+reviewer will see it.
+
+`check` additionally validates **derived state** — registries and the context
+wiki are generated from source artifacts, so they drift silently and nothing
+fails at runtime; an agent simply follows a pointer to a file that is not there.
+It reports:
+
+- an `index.yml` entry whose `path` or `spec` names a file that no longer exists
+- a `docs/features/*/spec.md` with no entry in `docs/features/index.yml`
+- a learning, standard, or wiki citing a session by **path** rather than by
+  identifier (retention deletes the log, so the link dangles)
+- a wiki reference to a `docs/`, `scripts/`, or `skills/` path that is missing
+- an `index.yml` this tool cannot parse
+
+Index files are workflow-generated, so the parser accepts a narrow shape and
+**reports what it does not recognize instead of guessing** — a validator that
+silently misparses would report safety it does not provide. The shape is a
+top-level `<name>:` key over a block list of maps (`  - key: value`,
+continuation `    key: value`, nested lists `      - item`), or `<name>: []`.
+Scalar keys beside the list are accepted and not inspected.
+
+### `validate`
+
+The same derived-state and audit-trail checks, without the freshness gates:
+
+```bash
+node .scripts/aw-gate.js validate
+```
+
+Exit **0** means derived state is consistent; exit **1** lists what drifted.
+Unlike `check` it does not read `gates.enabled` and needs no recorded state, so
+it works in a repo that has not adopted gates at all. `check` runs these checks
+too, so wiring `validate` separately is only worth it if you want registry
+validation without gate freshness.
+
 ### `org-sync`
 
 Shallow-clones or updates the configured org knowledge repo into the git-ignored

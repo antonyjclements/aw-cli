@@ -1,5 +1,5 @@
 # AGENTS.md
-<!-- AUGMENTED_WORKFLOW_VERSION=0.11.0 -->
+<!-- AUGMENTED_WORKFLOW_VERSION=0.14.0 -->
 
 This is the repository's portable routing file. It says when to act and where to look; skills and `docs/workflow/` own procedures and reference detail.
 

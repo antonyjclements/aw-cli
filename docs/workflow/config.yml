@@ -98,17 +98,10 @@ gates:
   state_file: .aw-gate-state.json
   checks:
     review:
-      mode: commit
-      paths:
-        - "(:glob)src/**/*.py"
-        - "(:glob)tests/**/*.py"
+      max_age_hours: 24
     capture:
-      mode: commit
-      paths:
-        - "(:glob)src/**/*.py"
-        - "(:glob)tests/**/*.py"
+      max_age_hours: 168
     check_workflow_compliance:
-      mode: age
       max_age_hours: 24
     synthesize:
       mode: age

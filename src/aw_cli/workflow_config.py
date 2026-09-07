@@ -62,13 +62,22 @@ def enable_default_aw_features(config_path: Path) -> bool:
         return False
 
     original = config_path.read_text(encoding="utf-8")
-    updated = original
-    for section, block in ENABLED_BLOCKS.items():
-        updated = _ensure_enabled_block(updated, section, block)
-
+    updated = with_default_aw_features(original)
     if updated != original:
         config_path.write_text(updated, encoding="utf-8")
     return updated != original
+
+
+def with_default_aw_features(text: str) -> str:
+    updated = text
+    for section, block in ENABLED_BLOCKS.items():
+        updated = _ensure_enabled_block(updated, section, block)
+    return updated
+
+
+def with_cli_default_aw_features(text: str) -> str:
+    updated = with_default_aw_features(text)
+    return _ensure_enabled_block(updated, "gates", ["gates:", "  enabled: true"])
 
 
 def _ensure_enabled_block(text: str, section: str, default_block: list[str]) -> str:
@@ -104,7 +113,7 @@ def _top_level_section_end(lines: list[str], start: int) -> int:
 
 
 def _insert_missing_block(lines: list[str], section: str, block: list[str]) -> str:
-    preferred_order = ["tracking", "telemetry", "trace", "pin", "workflow_trace"]
+    preferred_order = ["gates", "tracking", "telemetry", "trace", "pin", "workflow_trace"]
     later_sections = preferred_order[preferred_order.index(section) + 1 :]
     insert_at = next((_top_level_section_start(lines, later) for later in later_sections if _top_level_section_start(lines, later) is not None), None)
     if insert_at is None:
