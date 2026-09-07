@@ -43,6 +43,42 @@ def make_source(tmp_path: Path) -> Path:
         skill_dir.mkdir(parents=True)
         (skill_dir / "SKILL.md").write_text(f"---\nname: {name}\n---\n", encoding="utf-8")
     (source / "aw-version.txt").write_text("1.2.3\n", encoding="utf-8")
+    artifacts = skills / "aw-init" / "artifacts"
+    artifacts.mkdir()
+    for name in (
+        "AGENTS.md",
+        "CLAUDE.md",
+        "prd-template.md",
+        "coding-approach.md",
+        "traceability.md",
+        "behavior-pinning.md",
+        "e2e-coverage.md",
+        "solutions-readme.md",
+        "workflow-readme.md",
+        "field-guide.md",
+        "gates.md",
+        "org-knowledge.md",
+        "tracking.md",
+        "metrics-readme.md",
+        "aw-gate.js",
+        "config.yml",
+    ):
+        (artifacts / name).write_text(f"{name}\n", encoding="utf-8")
+    (artifacts / "AGENTS.md").write_text("AUGMENTED_WORKFLOW_VERSION=old\n", encoding="utf-8")
+    (artifacts / "config.yml").write_text(
+        "workflow:\n"
+        "  implementation:\n"
+        "    test_policy: acceptance-first\n"
+        "  steps:\n"
+        "    work:\n"
+        "      skill: \"\"\n"
+        "telemetry:\n"
+        "  enabled: false\n",
+        encoding="utf-8",
+    )
+    hooks = skills / "aw-init" / "hooks"
+    hooks.mkdir()
+    (hooks / "log-session.sh").write_text("#!/usr/bin/env bash\n", encoding="utf-8")
     return source
 
 
@@ -174,45 +210,47 @@ class CliTests(unittest.TestCase):
             self.assertIn("AW Status", output)
             self.assertIn("missing: AGENTS.md", output)
 
-    def test_init_enables_aw_defaults_after_successful_installer(self) -> None:
+    def test_init_scaffolds_directly_and_enables_aw_defaults(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             source = make_source(tmp_path)
-            installer = source / "skills" / "aw-init" / "scripts"
-            installer.mkdir(parents=True, exist_ok=True)
-            (installer / "install.sh").write_text("#!/usr/bin/env bash\n", encoding="utf-8")
-            config = tmp_path / "repo" / "docs" / "workflow" / "config.yml"
-            config.parent.mkdir(parents=True)
-            config.write_text(
-                "telemetry:\n"
-                "  enabled: false\n"
-                "trace:\n"
-                "  enabled: false\n"
-                "pin:\n"
-                "  enabled: false\n"
-                "workflow_trace:\n"
-                "  enabled: false\n",
-                encoding="utf-8",
-            )
             args = argparse.Namespace(source=source, source_url=None, repo=tmp_path / "repo", force=False)
             stdout = io.StringIO()
 
-            with mock.patch("subprocess.run", return_value=argparse.Namespace(returncode=0)) as subprocess_run:
-                with redirect_stdout(stdout):
-                    exit_code = init_run(args)
+            with redirect_stdout(stdout):
+                exit_code = init_run(args)
 
             self.assertEqual(exit_code, 0)
-            subprocess_run.assert_called_once()
-            command = subprocess_run.call_args.args[0]
-            self.assertIn("--with-gates", command)
-            self.assertIn("--skip-skills", command)
-            self.assertNotIn("--remote", command)
+            self.assertTrue((tmp_path / "repo" / ".scripts" / "aw-gate.js").is_file())
+            self.assertTrue((tmp_path / "repo" / ".claude" / "hooks" / "log-session.sh").is_file())
+            config = tmp_path / "repo" / "docs" / "workflow" / "config.yml"
             config_text = config.read_text(encoding="utf-8")
+            self.assertIn("  steps:\n    work:\n      skill: \"\"\n", config_text)
+            self.assertIn("gates:\n  enabled: true\n", config_text)
             self.assertIn("tracking:\n  enabled: true\n", config_text)
             self.assertIn("telemetry:\n  enabled: true\n", config_text)
             self.assertIn("trace:\n  enabled: true\n", config_text)
             self.assertIn("pin:\n  enabled: true\n", config_text)
             self.assertIn("workflow_trace:\n  enabled: true\n", config_text)
+
+    def test_init_prompts_for_each_changed_existing_file_and_force_skips_prompts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            source = make_source(tmp_path)
+            repo = tmp_path / "repo"
+            repo.mkdir()
+            agents = repo / "AGENTS.md"
+            agents.write_text("custom\n", encoding="utf-8")
+
+            with mock.patch("builtins.input", return_value="n") as prompt:
+                self.assertEqual(init_run(argparse.Namespace(source=source, source_url=None, repo=repo, force=False)), 0)
+            self.assertEqual(agents.read_text(encoding="utf-8"), "custom\n")
+            prompt.assert_any_call("Overwrite existing AGENTS.md? [y/N] ")
+
+            with mock.patch("builtins.input") as prompt:
+                self.assertEqual(init_run(argparse.Namespace(source=source, source_url=None, repo=repo, force=True)), 0)
+            self.assertIn("AUGMENTED_WORKFLOW_VERSION=1.2.3", agents.read_text(encoding="utf-8"))
+            prompt.assert_not_called()
 
     def test_enable_default_aw_features_adds_missing_tracking_block(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
