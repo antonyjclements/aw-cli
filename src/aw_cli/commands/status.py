@@ -4,6 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
+from aw_cli import __version__
 
 REQUIRED_PATHS = (
     "AGENTS.md",
@@ -22,8 +23,9 @@ def run(args: argparse.Namespace) -> int:
     version = _read_text(repo / ".augmented-workflow-version") or "missing"
 
     print("AW Status")
+    print(f"CLI version: {__version__}")
     print(f"Repo: {repo}")
-    print(f"Version: {version.strip()}")
+    print(f"AW version: {version.strip()}")
 
     missing = []
     for relative in REQUIRED_PATHS:

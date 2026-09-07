@@ -13,8 +13,10 @@ from pathlib import Path
 from unittest import mock
 
 from aw_cli.cli import main
+from aw_cli import __version__
 from aw_cli.config import DEFAULT_SOURCE_URL
 from aw_cli.commands.init_repo import run as init_run
+from aw_cli.commands.doctor import run as doctor_run
 from aw_cli.commands.metrics import (
     MetricsDataset,
     MetricEvent,
@@ -208,7 +210,33 @@ class CliTests(unittest.TestCase):
             self.assertEqual(exit_code, 1)
             output = stdout.getvalue()
             self.assertIn("AW Status", output)
+            self.assertIn(f"CLI version: {__version__}", output)
+            self.assertIn("AW version: missing", output)
             self.assertIn("missing: AGENTS.md", output)
+
+    def test_doctor_reports_cli_and_installed_aw_versions(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            source = make_source(tmp_path)
+            stdout = io.StringIO()
+
+            with redirect_stdout(stdout):
+                exit_code = doctor_run(
+                    argparse.Namespace(source=source, source_url=None, skills_dir=tmp_path / "skills", agent_dir=[])
+                )
+
+            self.assertEqual(exit_code, 1)
+            self.assertIn(f"CLI version: {__version__}", stdout.getvalue())
+            self.assertIn("Installed AW version: missing", stdout.getvalue())
+
+    def test_cli_version_flag_prints_package_version(self) -> None:
+        stdout = io.StringIO()
+
+        with self.assertRaises(SystemExit) as raised, redirect_stdout(stdout):
+            main(["--version"])
+
+        self.assertEqual(raised.exception.code, 0)
+        self.assertEqual(stdout.getvalue(), f"aw {__version__}\n")
 
     def test_init_scaffolds_directly_and_enables_aw_defaults(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 
+from aw_cli import __version__
 from aw_cli.config import agent_skill_links, skills_dir, source_url
 from aw_cli.installer import discover_aw_skills
 from aw_cli.source import prepared_source
@@ -22,9 +23,10 @@ def run(args: argparse.Namespace) -> int:
     version = version_file.read_text(encoding="utf-8").strip() if version_file.is_file() else "missing"
 
     print("AW Doctor")
+    print(f"CLI version: {__version__}")
     print(f"Source: {source_label}")
     print(f"Skills dir: {target_skills}")
-    print(f"Installed version: {version}")
+    print(f"Installed AW version: {version}")
     print(f"Expected skills: {len(expected)}")
     print(f"Installed skills: {len(installed)}")
     print(f"Missing skills: {', '.join(missing) if missing else 'none'}")
