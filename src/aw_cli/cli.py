@@ -4,11 +4,13 @@ import argparse
 import sys
 from pathlib import Path
 
+from aw_cli import __version__
 from aw_cli.commands import doctor, init_repo, install, metrics, status
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="aw", description="Augmented Workflow CLI")
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     install_parser = subparsers.add_parser("install", help="Install AW skills globally")
