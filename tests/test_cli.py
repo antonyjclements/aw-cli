@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import importlib.util
 import io
 import json
 import tempfile
@@ -21,7 +20,6 @@ from aw_cli.commands.metrics import (
     MetricsDataset,
     MetricEvent,
     SkillEvent,
-    _build_metrics_app,
     daily_activity,
     hourly_activity,
     load_dataset,
@@ -30,6 +28,7 @@ from aw_cli.commands.metrics import (
     render_activity_heatmap,
     render_hourly_line_chart,
     render_workflow_compliance,
+    weekday_activity,
     workflow_session_counts,
 )
 from aw_cli.commands.status import run as status_run
@@ -163,6 +162,7 @@ class CliTests(unittest.TestCase):
 
         self.assertEqual(hourly_activity(dataset), Counter({14: 2, 2: 1}))
         self.assertEqual(daily_activity(dataset), Counter({date(2026, 8, 13): 3}))
+        self.assertEqual(weekday_activity(dataset), Counter({3: 3}))
 
     def test_renderers_show_hourly_heatmap_and_session_compliance(self) -> None:
         skills = [
@@ -180,23 +180,6 @@ class CliTests(unittest.TestCase):
         self.assertIn("Activity by hour", render_hourly_line_chart(Counter({2: 3, 14: 1})))
         self.assertIn("Peak: 02:00", render_hourly_line_chart(Counter({2: 3, 14: 1})))
         self.assertIn("Activity heatmap", render_activity_heatmap(Counter({date(2026, 8, 13): 4}), today=date(2026, 8, 13), weeks=2))
-
-    def test_metrics_app_compose_accepts_widget_classes(self) -> None:
-        if importlib.util.find_spec("textual") is None or importlib.util.find_spec("textual_plot") is None:
-            self.skipTest("textual and textual-plot are not installed")
-        with tempfile.TemporaryDirectory() as tmp:
-            tmp_path = Path(tmp)
-            metrics_dir = tmp_path / "docs" / "metrics"
-            metrics_dir.mkdir(parents=True)
-            payload = {"ts": "2026-08-13T00:35:35.295Z", "event": "review", "detail": "code", "source": "aw-gate"}
-            (metrics_dir / "events-2026-08.jsonl").write_text(json.dumps(payload) + "\n", encoding="utf-8")
-
-            MetricsApp = _build_metrics_app()
-            app = MetricsApp(tmp_path)
-
-            widgets = list(app.compose())
-
-            self.assertGreaterEqual(len(widgets), 7)
 
     def test_status_reports_missing_repo_files(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

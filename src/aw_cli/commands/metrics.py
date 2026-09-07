@@ -15,7 +15,14 @@ SKILL_STEP_ALIASES = {
     "aw-capture": "capture",
     "aw-synthesize-memory": "synthesize",
 }
-HEATMAP_BG_COLORS = ("#161b22", "#0e4429", "#006d32", "#26a641", "#39d353")
+HEATMAP_BG_COLORS = ("#241b2f", "#4c1d95", "#6d28d9", "#8b5cf6", "#c084fc")
+PURPLE = "#c084fc"
+WORKFLOW_COLORS = {
+    "review": "#c084fc",
+    "capture": "#d9f900",
+    "check_workflow_compliance": "#fbbf24",
+    "synthesize": "#f43f5e",
+}
 
 
 @dataclass(frozen=True)
@@ -93,6 +100,13 @@ def daily_activity(dataset: MetricsDataset) -> Counter[date]:
     counts: Counter[date] = Counter()
     for ts in _all_timestamps(dataset):
         counts[ts.date()] += 1
+    return counts
+
+
+def weekday_activity(dataset: MetricsDataset) -> Counter[int]:
+    counts: Counter[int] = Counter()
+    for ts in _all_timestamps(dataset):
+        counts[ts.weekday()] += 1
     return counts
 
 
@@ -316,6 +330,28 @@ def _build_metrics_app():
             text.append(" More", style="dim")
             return text
 
+    class WorkflowCompliancePanel(Static):
+        def __init__(self, total_sessions: int, counts: Counter[str], **kwargs: object) -> None:
+            super().__init__(**kwargs)
+            self.total_sessions = total_sessions
+            self.counts = counts
+
+        def render(self) -> Text:
+            text = Text("Workflow coverage per session", style="bold")
+            if self.total_sessions == 0:
+                text.append("\n\nNo skill session data yet.", style="dim")
+                return text
+            for step in WORKFLOW_STEPS:
+                count = self.counts.get(step, 0)
+                percent = round((count / self.total_sessions) * 100)
+                filled = round(percent * 18 / 100)
+                label = step.replace("check_workflow_", "").replace("_", " ").title()
+                text.append(f"\n{label:<12} ", style="white")
+                text.append("█" * filled, style=WORKFLOW_COLORS[step])
+                text.append("░" * (18 - filled), style="dim")
+                text.append(f" {count}/{self.total_sessions} ({percent}%)", style="dim")
+            return text
+
     class PlotPanel(Vertical):
         def __init__(self, title: str, plot_id: str, **kwargs: object) -> None:
             super().__init__(**kwargs)
@@ -383,17 +419,16 @@ def _build_metrics_app():
             yield Label(self._summary(sessions), id="summary")
             with Grid(id="dashboard"):
                 yield PlotPanel("Activity by hour", "hourly-plot", classes="panel")
-                yield PlotPanel("Gate events", "gate-events-plot", classes="panel")
+                yield PlotPanel("Activity by day of week", "weekday-plot", classes="panel")
                 yield PlotPanel("Skill usage", "skill-usage-plot", classes="panel")
-                yield PlotPanel("Workflow compliance by session", "workflow-compliance-plot", classes="panel")
+                yield WorkflowCompliancePanel(sessions, compliance, classes="panel")
                 yield HeatmapPanel(daily_activity(self.dataset), id="heatmap", classes="panel")
             yield Footer()
 
         def on_mount(self) -> None:
             self._plot_hourly_activity()
-            self._plot_gate_events()
+            self._plot_weekday_activity()
             self._plot_skill_usage()
-            self._plot_workflow_compliance()
 
         def _summary(self, sessions: int) -> str:
             timestamps = _all_timestamps(self.dataset)
@@ -410,27 +445,25 @@ def _build_metrics_app():
             plot.clear()
             x = list(range(24))
             y = [counts.get(hour, 0) for hour in x]
-            plot.plot(x=x, y=y, line_style="bright_green", label="activity")
+            plot.plot(x=x, y=y, line_style=PURPLE, label="activity")
             plot.set_xlabel("Hour of day")
             plot.set_ylabel("Events")
             plot.set_xlimits(0, 23)
             plot.set_ylimits(ymin=0)
 
-        def _plot_gate_events(self) -> None:
-            self._plot_bar("#gate-events-plot", event_counts(self.dataset.events), "Gate", "Events")
+        def _plot_weekday_activity(self) -> None:
+            counts = weekday_activity(self.dataset)
+            plot = self.query_one("#weekday-plot", PlotWidget)
+            plot.clear()
+            labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+            values = [counts.get(day, 0) for day in range(7)]
+            plot.bar(labels, values, width=0.72, bar_style=PURPLE, label="activity")
+            plot.set_xlabel("Day")
+            plot.set_ylabel("Events")
+            plot.set_ylimits(ymin=0)
 
         def _plot_skill_usage(self) -> None:
             self._plot_bar("#skill-usage-plot", skill_counts(self.dataset.skills), "Skill", "Invocations")
-
-        def _plot_workflow_compliance(self) -> None:
-            sessions, counts = workflow_session_counts(self.dataset.skills)
-            percentages = Counter(
-                {
-                    step: round((counts.get(step, 0) / sessions) * 100) if sessions else 0
-                    for step in WORKFLOW_STEPS
-                }
-            )
-            self._plot_bar("#workflow-compliance-plot", percentages, "Workflow step", "% sessions")
 
         def _plot_bar(self, selector: str, counts: Counter[str], xlabel: str, ylabel: str) -> None:
             plot = self.query_one(selector, PlotWidget)
@@ -440,7 +473,7 @@ def _build_metrics_app():
             if not labels:
                 labels = ["no data"]
                 values = [0]
-            plot.bar(labels, values, width=0.8, bar_style="bright_green", label=ylabel)
+            plot.bar(labels, values, width=0.72, bar_style=PURPLE, label=ylabel)
             plot.set_xlabel(xlabel)
             plot.set_ylabel(ylabel)
             plot.set_ylimits(ymin=0)
