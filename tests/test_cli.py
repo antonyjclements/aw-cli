@@ -27,11 +27,13 @@ from aw_cli.commands.metrics import (
     load_skill_events,
     render_activity_heatmap,
     render_hourly_line_chart,
+    render_weekday_bar_chart,
     render_workflow_compliance,
     weekday_activity,
     workflow_session_counts,
 )
 from aw_cli.commands.status import run as status_run
+from aw_cli.commands.update import CLI_SOURCE, run as update_run
 from aw_cli.installer import install_aw_skills
 from aw_cli.workflow_config import enable_default_aw_features
 
@@ -179,6 +181,7 @@ class CliTests(unittest.TestCase):
         self.assertIn("2/3", render_workflow_compliance(total, counts))
         self.assertIn("Activity by hour", render_hourly_line_chart(Counter({2: 3, 14: 1})))
         self.assertIn("Peak: 02:00", render_hourly_line_chart(Counter({2: 3, 14: 1})))
+        self.assertIn("Mon Tue Wed Thu Fri Sat Sun", render_weekday_bar_chart(Counter({0: 3, 4: 1})))
         self.assertIn("Activity heatmap", render_activity_heatmap(Counter({date(2026, 8, 13): 4}), today=date(2026, 8, 13), weeks=2))
 
     def test_status_reports_missing_repo_files(self) -> None:
@@ -220,6 +223,27 @@ class CliTests(unittest.TestCase):
 
         self.assertEqual(raised.exception.code, 0)
         self.assertEqual(stdout.getvalue(), f"aw {__version__}\n")
+
+    def test_update_dry_run_shows_the_github_pipx_command(self) -> None:
+        stdout = io.StringIO()
+
+        with redirect_stdout(stdout):
+            exit_code = main(["update", "--dry-run"])
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn(f"pipx install --force {CLI_SOURCE}", stdout.getvalue())
+
+    def test_update_runs_pipx_force_install_and_reports_success(self) -> None:
+        stdout = io.StringIO()
+        args = argparse.Namespace(dry_run=False)
+
+        with mock.patch("aw_cli.commands.update.subprocess.run", return_value=mock.Mock(returncode=0)) as run:
+            with redirect_stdout(stdout):
+                exit_code = update_run(args)
+
+        self.assertEqual(exit_code, 0)
+        run.assert_called_once_with(["pipx", "install", "--force", CLI_SOURCE], check=False)
+        self.assertIn("aw updated from GitHub", stdout.getvalue())
 
     def test_init_scaffolds_directly_and_enables_aw_defaults(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

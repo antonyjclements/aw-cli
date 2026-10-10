@@ -1,1 +1,5 @@
-features: []
+features:
+  - path: docs/features/repo-upgrade/spec.md
+    title: Repository upgrade
+  - path: docs/features/cli-maintenance/spec.md
+    title: CLI maintenance and metrics

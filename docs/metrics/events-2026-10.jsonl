@@ -1,0 +1,4 @@
+{"ts":"2026-10-10T00:57:31.046Z","event":"capture","detail":"Capture checkpoint; no additional durable record needed","source":"aw-gate"}
+{"ts":"2026-10-10T00:57:31.120Z","event":"synthesize","detail":null,"source":"aw-gate"}
+{"ts":"2026-10-10T00:57:31.237Z","event":"review","detail":"Full pending-change review before publishing","source":"aw-gate"}
+{"ts":"2026-10-10T00:57:59.349Z","event":"check_workflow_compliance","detail":null,"source":"aw-gate"}

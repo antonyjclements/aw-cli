@@ -36,6 +36,7 @@ GENERATED = {
 GITIGNORE = (".aw-gate-state.json", ".aw/receipts/", ".aw-org-cache/", ".aw/tmp/", ".aw/workflow-trace.jsonl", ".aw/pin/", ".aw/session")
 GITATTRIBUTES = ("docs/metrics/events*.jsonl merge=union", "docs/metrics/skills*.jsonl merge=union")
 HOOK_COMMAND = "$CLAUDE_PROJECT_DIR/.claude/hooks/log-session.sh"
+UPGRADE_REPLACEMENTS = {".scripts/aw-gate.js", "docs/workflow/config.yml", "AGENTS.md", ".augmented-workflow-version"}
 
 
 def run(args: argparse.Namespace) -> int:
@@ -51,8 +52,9 @@ def run(args: argparse.Namespace) -> int:
 
 
 class RepoScaffolder:
-    def __init__(self, repo: Path, source: Path, *, force: bool) -> None:
+    def __init__(self, repo: Path, source: Path, *, force: bool, upgrade: bool = False) -> None:
         self.repo, self.source, self.force = repo, source, force
+        self.upgrade = upgrade
 
     def install(self) -> None:
         artifacts = self.source / "skills" / "aw-init" / "artifacts"
@@ -78,6 +80,9 @@ class RepoScaffolder:
 
     def write(self, relative: str, content: str, *, executable: bool = False) -> bool:
         target = self.repo / relative
+        if self.upgrade and relative not in UPGRADE_REPLACEMENTS and target.exists():
+            print(f"preserve: {relative}")
+            return False
         if target.exists() and target.is_dir():
             print(f"preserve: {relative} (directory)")
             return False
@@ -87,6 +92,8 @@ class RepoScaffolder:
         if target.exists() and not self._confirm(relative):
             print(f"preserve: {relative}")
             return False
+        if self.upgrade and relative == "docs/workflow/config.yml" and target.is_file():
+            self._backup_config(target)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
         if executable:
@@ -94,8 +101,26 @@ class RepoScaffolder:
         print(f"write: {relative}")
         return True
 
+    def _backup_config(self, target: Path) -> None:
+        content = target.read_bytes()
+        number = 0
+        while True:
+            suffix = ".bak" if number == 0 else f".bak.{number}"
+            backup = target.with_name(target.name + suffix)
+            try:
+                with backup.open("xb") as stream:
+                    stream.write(content)
+            except FileExistsError:
+                number += 1
+                continue
+            print(f"backup: {backup.relative_to(self.repo)}")
+            return
+
     def _settings(self) -> None:
         path = self.repo / ".claude/settings.json"
+        if self.upgrade and path.exists():
+            print("preserve: .claude/settings.json")
+            return
         try:
             data = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
         except json.JSONDecodeError:
@@ -107,13 +132,16 @@ class RepoScaffolder:
 
     def _merge(self, relative: str, entries: tuple[str, ...]) -> None:
         target = self.repo / relative
+        if self.upgrade and target.exists():
+            print(f"preserve: {relative}")
+            return
         lines = target.read_text(encoding="utf-8").splitlines() if target.is_file() else []
         missing = [entry for entry in entries if entry not in lines]
         if missing:
             self.write(relative, "\n".join(lines + missing) + "\n")
 
     def _confirm(self, relative: str) -> bool:
-        if self.force:
+        if self.force or self.upgrade:
             return True
         try:
             return input(f"Overwrite existing {relative}? [y/N] ").strip().lower() in {"y", "yes"}
