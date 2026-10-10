@@ -1,1 +1,9 @@
-decisions: []
+decisions:
+  - path: docs/decisions/2026-10-10-safe-cli-migration.md
+    title: Preserve ownership and configuration during CLI migration
+    date: 2026-10-10
+    status: active
+    tags:
+      - cli
+      - migration
+      - safety
