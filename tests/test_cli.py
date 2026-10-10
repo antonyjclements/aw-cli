@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import io
 import json
+import shutil
 import tempfile
 import unittest
 from collections import Counter
@@ -82,6 +83,7 @@ def make_source(tmp_path: Path) -> Path:
     hooks = skills / "aw-init" / "hooks"
     hooks.mkdir()
     (hooks / "log-session.sh").write_text("#!/usr/bin/env bash\n", encoding="utf-8")
+    shutil.copytree(Path(__file__).parent / "fixtures" / "aw-migration", skills / "aw-init" / "scripts")
     return source
 
 

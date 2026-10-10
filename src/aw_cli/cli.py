@@ -20,6 +20,7 @@ def build_parser() -> argparse.ArgumentParser:
     install_parser.add_argument("--agent-dir", action="append", type=Path, help="Agent directory to receive a skills symlink")
     install_parser.add_argument("--force", action="store_true", help="Replace conflicting symlinks")
     install_parser.add_argument("--dry-run", action="store_true", help="Show what would change")
+    install_parser.add_argument("--rollback-skills", type=Path, help="Restore a retained skill migration backup (skills only)")
 
     init_parser = subparsers.add_parser("init", help="Scaffold or update AW repo files in the current directory")
     init_parser.add_argument("--source", type=Path, help="Augmented Workflow source directory")
@@ -27,10 +28,11 @@ def build_parser() -> argparse.ArgumentParser:
     init_parser.add_argument("--repo", type=Path, default=Path.cwd(), help="Target repo directory")
     init_parser.add_argument("--force", action="store_true", help="Overwrite every existing scaffold file without prompting")
 
-    upgrade_parser = subparsers.add_parser("upgrade", help="Add missing AW repo files and replace core workflow files")
+    upgrade_parser = subparsers.add_parser("upgrade", help="Safely migrate config and refresh verified AW repo files")
     upgrade_parser.add_argument("--source", type=Path, help="Augmented Workflow source directory")
     upgrade_parser.add_argument("--source-url", help="Augmented Workflow source archive URL")
     upgrade_parser.add_argument("--repo", type=Path, default=Path.cwd(), help="Target repo directory")
+    upgrade_parser.add_argument("--dry-run", action="store_true", help="Preview without changing repository files")
 
     metrics_parser = subparsers.add_parser("metrics", help="Open workflow metrics TUI")
     metrics_parser.add_argument("--repo", type=Path, default=Path.cwd(), help="Repo containing docs/metrics")

@@ -22,6 +22,15 @@ def source_url(explicit: str | None = None) -> str:
     return explicit or os.environ.get("AW_SOURCE_URL") or DEFAULT_SOURCE_URL
 
 
+def selected_source(explicit: Path | None, explicit_url: str | None) -> Path | None:
+    if explicit is not None:
+        return explicit
+    if explicit_url is not None:
+        return None
+    value = os.environ.get("AW_SOURCE_DIR")
+    return Path(value) if value else None
+
+
 def skills_dir(explicit: Path | None = None) -> Path:
     raw = explicit or os.environ.get("AW_SKILLS_DIR") or Path("~/.agents/skills")
     return Path(raw).expanduser()

@@ -31,7 +31,12 @@ def prepared_source(*, source: Path | None, source_url: str) -> Iterator[Path]:
 def _safe_extract(tar: tarfile.TarFile, destination: Path) -> None:
     destination_root = destination.resolve()
     for member in tar.getmembers():
+        if not (member.isfile() or member.isdir()):
+            raise ValueError(f"unsupported archive member type: {member.name}")
         target = (destination / member.name).resolve()
         if destination_root != target and destination_root not in target.parents:
             raise ValueError(f"unsafe archive member path: {member.name}")
-    tar.extractall(destination)
+    if hasattr(tarfile, "data_filter"):
+        tar.extractall(destination, filter="data")
+    else:  # Python 3.11 before extraction filters were backported.
+        tar.extractall(destination)
