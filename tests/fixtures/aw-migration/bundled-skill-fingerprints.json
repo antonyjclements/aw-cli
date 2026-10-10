@@ -1,0 +1,108 @@
+{
+  "schema": 1,
+  "baseline_commit": "5fae68e9f7c1b397dd0721cfd4183cf9760c2900",
+  "baseline_version": "0.15.0",
+  "algorithm": "sha256 of sorted path types, file contents, executable bits, symlink targets; see migrate-skills.py fingerprint",
+  "skills": {
+    "aw-brainstorm": [
+      "3d119480a2bdfd250495d8533c4a809d69a627545acd5f08d9eca46e8d45feef"
+    ],
+    "aw-capture": [
+      "c8eb8b3a3413fc131ae1da93cd5fb386935f27f94f495cb68c5b5c2bf41b7a0f"
+    ],
+    "aw-check-workflow-compliance": [
+      "1b3d983c11482c3328475796b92e60d17a98df83ef31fb6d0f68ea237f0d6691"
+    ],
+    "aw-commit": [
+      "0cba0c41181dda93c9126ac149c7f0426d8e68e31478fbc0e957cd430571b06a"
+    ],
+    "aw-commit-push-pr": [
+      "287c7659155b760cf3474f62799c949cecbb05abf6e0cc61acbd173ec5bea97a"
+    ],
+    "aw-create-spec": [
+      "c4db09bd00ec45ba73ee3b375d7c527a70fa7d87ddebd42e37d12d47c852ca1f"
+    ],
+    "aw-create-tickets": [
+      "44fc3ba2266407cff63746dc98130cb5153e41f3786188aa06575a428fb6ea9b"
+    ],
+    "aw-create-worktree": [
+      "1f34bab60bef6ff220f9f283961ed70a6a0c2465b6bc0d53b72415972f1411c2"
+    ],
+    "aw-debug": [
+      "bb189ec72633665f1fc53845457fbe4353a35276048e5df3912d9254964f97a2"
+    ],
+    "aw-discover-standards": [
+      "b41fc92b1c571ac780ee282297d9b2802dceb4b4814f0221d0b092435d1a2763"
+    ],
+    "aw-help": [
+      "867a32e98aa2dcda4f8c32a03c7732d13f3876df5caddbbf3f02c3eb2db03b78"
+    ],
+    "aw-init": [
+      "21442a8a8c9a113305d31b2e4e4e22e09e108099310d31bb8e738da2eba99b86"
+    ],
+    "aw-pin-behavior": [
+      "64d015ed585b9705da0f3517dd4d1e6f980d62f2dce13ffaacae3b0fc7c12ea6"
+    ],
+    "aw-plan": [
+      "37af12e8ac6b1383d3c3a1ce6fc9a78ee309e8a38bfac313a9bd0b5a5798c354"
+    ],
+    "aw-prd": [
+      "e669df93b612af5bb539f77435a57ef1d563cd5389212d883e47645adb24fdc8"
+    ],
+    "aw-refresh": [
+      "2d597deb82d2e5566ab6204cae6901e81a3bd840e4da6020b5e29c73fed71137"
+    ],
+    "aw-request-human-review": [
+      "c47d91e0bd48f2568a99cf8c4f044b3168ba78d9109c41809e9883061377fa09"
+    ],
+    "aw-research": [
+      "52f1288c2cbd51889a0edf5b94288a9b3b8521dff6e9368dde3e7dceda3f6c30"
+    ],
+    "aw-resolve-pr-feedback": [
+      "c6beeafecec5781738dff67127d088f0e82a88801ccdfa1504181749becb7705"
+    ],
+    "aw-review": [
+      "d4c33f45016dd72c34989da17ce4f1ecb81b0345955884e33c3f8561229b5c14"
+    ],
+    "aw-synthesize-memory": [
+      "35ac36948a80fe0734f663911d8d08d3d470640127333420a10fd94b9238ce0a"
+    ],
+    "aw-work": [
+      "a1e307eaf494f87dd14ee4ed104ae4e148982a330cb7dbd18a6da6003de3353d"
+    ]
+  },
+  "repo_files": {
+    "AGENTS.md": "31c0846c76b998bef7ea82ffdf2afc158bbcfac003727ed85f8d27ae781d4fe4",
+    "CLAUDE.md": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49",
+    ".scripts/aw-gate.js": "120e59146c669302f9eaeb040e2b7948320fed337656629a4dc725b065c931ab",
+    "docs/workflow/README.md": "2565afb028cc294f853ac801c36779b8b9ae3f785821253a1fc2c14c124e5b99",
+    "docs/workflow/field-guide.md": "5e332f08bab46feaf81aa0f45eb25639be36aa619c8da5c91f68e394e314358f",
+    "docs/workflow/tracking.md": "9e3d30e2cbdf655cf7dc331a86ae88d61ef2c2cd33c96ac80ee589da5df1b89a",
+    "docs/standards/e2e-coverage.md": "30636111e727f277a3dc734988854a09d14f473d177c984d12772a4dd626105c"
+  },
+  "phase1_checkpoint": {
+    "base_commit": "5fae68e9f7c1b397dd0721cfd4183cf9760c2900",
+    "patch_sha256": "329c7c4dbcc544ef18c60a3eb8edae0e75913d15830dd7d8b1383c0837e5297f",
+    "note": "Pre-U8 Phase 1 implementation checkpoint, not a published release; repo_file_history fingerprints allow backed-up refresh."
+  },
+  "repo_file_history": {
+    "AGENTS.md": [
+      "4626e35a3e26030e925aefee6ec7c71b0bea2301c2af67056fdd1de1aea9b398"
+    ],
+    ".scripts/aw-gate.js": [
+      "9f961d0807a27c96f1ac00948a0f7c8cfc4058b9261a1a0c0cd38955b9065887"
+    ],
+    "docs/workflow/README.md": [
+      "7326edc7e6d2cab3910269555b02e2f5b482ae2bca5bb152f4562fcd85fa4cb9"
+    ],
+    "docs/workflow/field-guide.md": [
+      "fd0159306f8552e023ef05be260bef2d3b6e5c00332d119349fa52ae378f6ae4"
+    ],
+    "docs/workflow/tracking.md": [
+      "2ffdea6b0bf6f9971b604e43e0e2f3154e14ec772e6d25bd92c6a447011a72e1"
+    ],
+    "docs/standards/e2e-coverage.md": [
+      "94cfe03e978e66f75ef0de5628d70e248aeb1fe06227c51eb793bbc040383e32"
+    ]
+  }
+}

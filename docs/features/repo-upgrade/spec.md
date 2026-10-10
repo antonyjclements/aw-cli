@@ -1,44 +1,63 @@
-# Repository upgrade
+# Safe installation and repository upgrade
 
-`aw upgrade` refreshes an existing repository from the same AW scaffold source
-used by `aw init`. It accepts `--repo`, `--source`, and `--source-url`.
+`aw upgrade` uses one prepared AW source, accepts `--repo`, `--source`,
+`--source-url`, and `--dry-run`, and never prompts. `aw update` still only updates
+aw-cli. `aw init` retains its interactive scaffolding contract.
 
-### UPGR-001 — Add missing scaffold files
+### UPGR-001 — Preserve local work
 
-Upgrade creates missing files from the initializer's artifact and generated-file
-sets, including optional hooks and supporting dotfiles. It preserves existing
-files outside the replacement set, including populated indexes and custom hooks,
-without prompting. Existing directories at file destinations are preserved.
+Add missing scaffold files. Preserve custom instructions, populated indexes,
+hooks, settings, and other unverified content. Refresh existing artifacts only
+when their bytes match the source's bundled history or the previous CLI repository
+ownership manifest. A customized or unverified gate helper blocks the upgrade
+before writes, because new routing must not claim compatibility with an old helper.
 
-### UPGR-002 — Replace selected workflow files
+### UPGR-002 — Migrate configuration safely
 
-Upgrade replaces changed `.scripts/aw-gate.js`, `docs/workflow/config.yml`,
-`AGENTS.md`, and `.augmented-workflow-version` without prompting. Content and
-executable permissions follow initialization, including CLI config defaults and
-the source version. Identical files are left untouched.
+Run the source's reviewed Ruby config migrator against a disposable copy before
+editing the target repository. Preserve user values, unknown keys, and independent
+stage providers. Conflicting legacy/current routes fail preflight. Fresh configs
+retain CLI defaults; existing configurations are never reset to those defaults.
+Sources must include safe migration helpers and fingerprint metadata; unsupported
+sources, missing Ruby for an existing config, malformed metadata, and symlink
+paths fail closed. Source helpers are executable code: use only trusted sources.
 
-### UPGR-003 — Back up changed configuration
+### UPGR-003 — Back up changes and recover failures
 
-Before replacing an existing changed config, upgrade saves its exact bytes beside
-it as `config.yml.bak`. If that path exists, it chooses the first available
-`config.yml.bak.N`, starting with 1. Previous backups are never overwritten.
-Missing or identical configs do not produce backups. A backup failure prevents
-configuration replacement and returns a nonzero exit code.
+Before any destination write, save exact copies of all changed existing files to
+exclusive `.bak`, `.bak.1`, etc. files without overwriting previous backups. Apply
+individual writes atomically. On an ordinary write failure, restore already written
+files to their previous bytes and modes and remove newly written files. Backups
+remain available for manual recovery after process interruption; repository writes
+are not one crash-atomic transaction. Repeated unchanged upgrades are no-ops.
 
-### UPGR-004 — Report upgrade results
+### UPGR-004 — Preview and report
 
-The command reports writes, preserved files, unchanged files, and backup paths,
-then confirms the target repository. Missing source artifacts return a nonzero
-exit code. `aw update` continues to update the CLI itself.
+Dry-run performs the same validation and configuration planning without modifying
+repository files. Reports distinguish preserved, unchanged, planned, and written
+files. Retired names in custom routing are reported for review, not rewritten
+based on their name alone. Local and archive source selections remain consistent.
+
+### INST-001 — Use verified skill migration
+
+`aw install` invokes the selected source's content-fingerprint migrator. Custom
+and unverified skills survive. Verified retired bundled skills are backed up and
+removed. Consolidated-name collisions fail before install writes; `--force` only
+permits replacing conflicting agent symlinks. Dry-run never writes skills or links.
+
+### INST-002 — Explicit skill rollback
+
+`aw install --rollback-skills BACKUP` restores the helper's verified skill
+transaction, including ownership/version metadata. It does not change agent links
+or repository files. `--dry-run` previews rollback. Keep the compatible source
+checkout and restore separately backed-up repository files as needed. The source
+helper's journal guards interrupted migrations and refuses rollback collisions.
 
 ## Acceptance verification
 
-Coverage lives in `tests/test_upgrade.py`:
-
-- UPGR-001: missing-file and customization tests, plus optional-hook and directory
-  conflict coverage.
-- UPGR-002: selected replacements, executable gate, config defaults, and repeated
-  runs that leave identical files untouched.
-- UPGR-003: exact-byte backups, successive backup names, no backup for missing or
-  identical config, and a simulated backup failure.
-- UPGR-004: CLI dispatch, result messages, and missing-source failure.
+- `tests/test_upgrade.py`: UPGR-001 through UPGR-004, including real Ruby migration,
+  conflicts, byte/mode restoration, backups, source/runtime failures and symlinks.
+- `tests/test_installer_migration.py`: INST-001 and INST-002, using the exact reviewed
+  upstream helper and a genuine historical skill fixture.
+- `tests/test_source.py`: local/environment/archive selection and unsafe archive
+  rejection. Real current-AW end-to-end checks supplement these fixtures.

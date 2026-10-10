@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 
-from aw_cli.config import source_url
+from aw_cli.config import source_url, selected_source
 from aw_cli.source import prepared_source
 from aw_cli.workflow_config import with_cli_default_aw_features
 
@@ -36,12 +37,11 @@ GENERATED = {
 GITIGNORE = (".aw-gate-state.json", ".aw/receipts/", ".aw-org-cache/", ".aw/tmp/", ".aw/workflow-trace.jsonl", ".aw/pin/", ".aw/session")
 GITATTRIBUTES = ("docs/metrics/events*.jsonl merge=union", "docs/metrics/skills*.jsonl merge=union")
 HOOK_COMMAND = "$CLAUDE_PROJECT_DIR/.claude/hooks/log-session.sh"
-UPGRADE_REPLACEMENTS = {".scripts/aw-gate.js", "docs/workflow/config.yml", "AGENTS.md", ".augmented-workflow-version"}
 
 
 def run(args: argparse.Namespace) -> int:
     repo = args.repo.expanduser().resolve()
-    with prepared_source(source=args.source, source_url=source_url(args.source_url)) as source:
+    with prepared_source(source=selected_source(args.source, args.source_url), source_url=source_url(args.source_url)) as source:
         try:
             RepoScaffolder(repo, source, force=args.force).install()
         except FileNotFoundError as exc:
@@ -52,9 +52,8 @@ def run(args: argparse.Namespace) -> int:
 
 
 class RepoScaffolder:
-    def __init__(self, repo: Path, source: Path, *, force: bool, upgrade: bool = False) -> None:
+    def __init__(self, repo: Path, source: Path, *, force: bool) -> None:
         self.repo, self.source, self.force = repo, source, force
-        self.upgrade = upgrade
 
     def install(self) -> None:
         artifacts = self.source / "skills" / "aw-init" / "artifacts"
@@ -80,9 +79,6 @@ class RepoScaffolder:
 
     def write(self, relative: str, content: str, *, executable: bool = False) -> bool:
         target = self.repo / relative
-        if self.upgrade and relative not in UPGRADE_REPLACEMENTS and target.exists():
-            print(f"preserve: {relative}")
-            return False
         if target.exists() and target.is_dir():
             print(f"preserve: {relative} (directory)")
             return False
@@ -92,8 +88,6 @@ class RepoScaffolder:
         if target.exists() and not self._confirm(relative):
             print(f"preserve: {relative}")
             return False
-        if self.upgrade and relative == "docs/workflow/config.yml" and target.is_file():
-            self._backup_config(target)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
         if executable:
@@ -101,26 +95,8 @@ class RepoScaffolder:
         print(f"write: {relative}")
         return True
 
-    def _backup_config(self, target: Path) -> None:
-        content = target.read_bytes()
-        number = 0
-        while True:
-            suffix = ".bak" if number == 0 else f".bak.{number}"
-            backup = target.with_name(target.name + suffix)
-            try:
-                with backup.open("xb") as stream:
-                    stream.write(content)
-            except FileExistsError:
-                number += 1
-                continue
-            print(f"backup: {backup.relative_to(self.repo)}")
-            return
-
     def _settings(self) -> None:
         path = self.repo / ".claude/settings.json"
-        if self.upgrade and path.exists():
-            print("preserve: .claude/settings.json")
-            return
         try:
             data = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
         except json.JSONDecodeError:
@@ -132,16 +108,13 @@ class RepoScaffolder:
 
     def _merge(self, relative: str, entries: tuple[str, ...]) -> None:
         target = self.repo / relative
-        if self.upgrade and target.exists():
-            print(f"preserve: {relative}")
-            return
         lines = target.read_text(encoding="utf-8").splitlines() if target.is_file() else []
         missing = [entry for entry in entries if entry not in lines]
         if missing:
             self.write(relative, "\n".join(lines + missing) + "\n")
 
     def _confirm(self, relative: str) -> bool:
-        if self.force or self.upgrade:
+        if self.force:
             return True
         try:
             return input(f"Overwrite existing {relative}? [y/N] ").strip().lower() in {"y", "yes"}
@@ -156,5 +129,4 @@ class RepoScaffolder:
 
 
 def _with_version(content: str, version: str) -> str:
-    marker = "AUGMENTED_WORKFLOW_VERSION="
-    return "\n".join(f"{marker}{version}" if line.startswith(marker) else line for line in content.splitlines()) + "\n"
+    return re.sub(r"AUGMENTED_WORKFLOW_VERSION=[^\s>]+", f"AUGMENTED_WORKFLOW_VERSION={version}", content)
