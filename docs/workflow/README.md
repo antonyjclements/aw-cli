@@ -145,6 +145,12 @@ their own. Instead, this workflow converts them into a **freshness contract**:
    `node .scripts/aw-gate.js check` exits non-zero when any gate under
    `gates.checks` fails its mode, and exits 0 when `gates.enabled` is false.
 
+Workflow compliance audits a scoped local committed/worktree diff before push.
+It does not require a pushed branch, upstream, or remote access. Report publication
+status separately; missing local scope or required test/review evidence still
+blocks a pass. Full-PR shipping runs the genuine audit before push and rechecks
+changed audited content before subsequent pushes.
+
 Wire `check` wherever you want it to block: a Git `pre-commit`/`pre-push` hook, or
 a required CI job. The workflow ships the script and the contract; the consumer
 chooses the enforcement point. The bundled event names are `review`, `capture`,
