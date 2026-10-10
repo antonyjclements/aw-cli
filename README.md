@@ -20,7 +20,7 @@ aw init
 To update an existing install:
 
 ```sh
-pipx upgrade aw-cli
+aw update
 ```
 
 To remove it:
@@ -33,8 +33,10 @@ pipx uninstall aw-cli
 
 - `aw install` installs AW skills from `https://github.com/antonyjclements/augmented-workflow` into `~/.agents/skills` and links supported agent skill directories to that global installation.
 - `aw init` scaffolds or updates AW repo files directly from the AW source for the current directory. It installs gates and enables tracking, telemetry, trace, workflow trace, and behavior pins by default. It asks before replacing every changed existing file; pass `--force` to accept all replacements.
+- `aw upgrade` adds missing scaffold files and replaces changed `.scripts/aw-gate.js`, `docs/workflow/config.yml`, `AGENTS.md`, and `.augmented-workflow-version` without prompting. Other existing files are preserved. Before replacing a changed config, it saves `docs/workflow/config.yml.bak` (or `.bak.1`, `.bak.2`, etc. if earlier backups exist). It uses the same source and config defaults as `aw init`; use `--repo` to target another repository.
 - `aw --version` prints the CLI release version. `aw status` and `aw doctor` print both the CLI version and their respective installed AW version.
-- `aw metrics` opens a Textual TUI over `docs/metrics/*.jsonl` with `textual-plot` hourly activity, gate event bars, skill usage, workflow-session compliance, and a GitHub-style activity heatmap.
+- `aw metrics` opens a Textual TUI over `docs/metrics/*.jsonl` with hourly and weekday activity charts, skill usage, workflow-session coverage, and a purple activity heatmap.
+- `aw update` reinstalls the CLI from its GitHub source with `pipx`; use `--dry-run` to see the command first.
 - `aw doctor` reports global skill installation health.
 - `aw status` reports the local repo installation state.
 

@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 from aw_cli import __version__
-from aw_cli.commands import doctor, init_repo, install, metrics, status
+from aw_cli.commands import doctor, init_repo, install, metrics, status, update, upgrade
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -27,8 +27,16 @@ def build_parser() -> argparse.ArgumentParser:
     init_parser.add_argument("--repo", type=Path, default=Path.cwd(), help="Target repo directory")
     init_parser.add_argument("--force", action="store_true", help="Overwrite every existing scaffold file without prompting")
 
+    upgrade_parser = subparsers.add_parser("upgrade", help="Add missing AW repo files and replace core workflow files")
+    upgrade_parser.add_argument("--source", type=Path, help="Augmented Workflow source directory")
+    upgrade_parser.add_argument("--source-url", help="Augmented Workflow source archive URL")
+    upgrade_parser.add_argument("--repo", type=Path, default=Path.cwd(), help="Target repo directory")
+
     metrics_parser = subparsers.add_parser("metrics", help="Open workflow metrics TUI")
     metrics_parser.add_argument("--repo", type=Path, default=Path.cwd(), help="Repo containing docs/metrics")
+
+    update_parser = subparsers.add_parser("update", help="Update aw from its GitHub source")
+    update_parser.add_argument("--dry-run", action="store_true", help="Show the pipx command without running it")
 
     doctor_parser = subparsers.add_parser("doctor", help="Show global AW skill installation health")
     doctor_parser.add_argument("--source", type=Path, help="Augmented Workflow source directory")
@@ -51,8 +59,12 @@ def main(argv: list[str] | None = None) -> int:
             return install.run(args)
         if args.command == "init":
             return init_repo.run(args)
+        if args.command == "upgrade":
+            return upgrade.run(args)
         if args.command == "metrics":
             return metrics.run(args)
+        if args.command == "update":
+            return update.run(args)
         if args.command == "doctor":
             return doctor.run(args)
         if args.command == "status":

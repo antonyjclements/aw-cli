@@ -158,6 +158,23 @@ def render_hourly_line_chart(counts: Counter[int], *, height: int = 6) -> str:
     return "\n".join(rows)
 
 
+def render_weekday_bar_chart(counts: Counter[int], *, height: int = 6) -> str:
+    values = [counts.get(day, 0) for day in range(7)]
+    max_value = max(values, default=0)
+    if max_value == 0:
+        return "Activity by day of week\n\nNo activity yet."
+
+    rows = ["Activity by day of week", ""]
+    for level in range(height, 0, -1):
+        threshold = max_value * level / height
+        label = f"{round(threshold):>3} ┤"
+        cells = [" ██ " if value >= threshold and value > 0 else "    " for value in values]
+        rows.append(label + "".join(cells))
+    rows.append("    └" + "────" * 7)
+    rows.append("     Mon Tue Wed Thu Fri Sat Sun")
+    return "\n".join(rows)
+
+
 def render_activity_heatmap(counts: Counter[date], *, today: date | None = None, weeks: int = 26) -> str:
     today = today or date.today()
     days = _heatmap_days(today, weeks)
@@ -192,8 +209,8 @@ def run(args: argparse.Namespace) -> int:
     try:
         MetricsApp = _build_metrics_app()
     except ModuleNotFoundError as exc:
-        if exc.name in {"textual", "textual_plot"}:
-            print('Textual and textual-plot are required for aw metrics. Install with: python3 -m pip install -e ".[dev]"')
+        if exc.name == "textual":
+            print('Textual is required for aw metrics. Reinstall with: pipx install --force git+https://github.com/antonyjclements/aw-cli.git')
             return 1
         raise
     MetricsApp(args.repo.expanduser().resolve()).run()
@@ -292,14 +309,18 @@ def _plain_heat_cell(count: int, max_count: int) -> str:
 
 def _build_metrics_app():
     from textual.app import App, ComposeResult
-    from textual.containers import Grid, Vertical
+    from textual.containers import Grid
     from textual.widgets import Footer, Header, Label, Static
-    from textual_plot import PlotWidget
     from rich.text import Text
 
     class ChartPanel(Static):
         def __init__(self, content: str, **kwargs: object) -> None:
             super().__init__(content, **kwargs)
+            self.content = content
+
+    class PurpleChartPanel(ChartPanel):
+        def render(self) -> Text:
+            return Text(self.content, style=PURPLE)
 
     class HeatmapPanel(Static):
         def __init__(self, counts: Counter[date], weeks: int = 26, **kwargs: object) -> None:
@@ -352,20 +373,11 @@ def _build_metrics_app():
                 text.append(f" {count}/{self.total_sessions} ({percent}%)", style="dim")
             return text
 
-    class PlotPanel(Vertical):
-        def __init__(self, title: str, plot_id: str, **kwargs: object) -> None:
-            super().__init__(**kwargs)
-            self.title = title
-            self.plot_id = plot_id
-
-        def compose(self) -> ComposeResult:
-            yield Label(self.title, classes="plot-title")
-            yield PlotWidget(id=self.plot_id)
-
     class MetricsApp(App[None]):
         CSS = """
         Screen {
             layout: vertical;
+            overflow-y: auto;
         }
 
         #summary {
@@ -376,28 +388,15 @@ def _build_metrics_app():
 
         #dashboard {
             grid-size: 2 3;
-            grid-rows: 1fr 1fr 1fr;
+            grid-rows: 10 10 10;
             grid-columns: 1fr 1fr;
-            height: 1fr;
+            height: auto;
         }
 
         .panel {
             border: solid $accent;
             padding: 1 2;
             height: 100%;
-        }
-
-        PlotPanel {
-            height: 100%;
-        }
-
-        PlotWidget {
-            height: 1fr;
-        }
-
-        .plot-title {
-            height: 1;
-            text-style: bold;
         }
 
         #heatmap {
@@ -418,17 +417,12 @@ def _build_metrics_app():
             yield Header(show_clock=True)
             yield Label(self._summary(sessions), id="summary")
             with Grid(id="dashboard"):
-                yield PlotPanel("Activity by hour", "hourly-plot", classes="panel")
-                yield PlotPanel("Activity by day of week", "weekday-plot", classes="panel")
-                yield PlotPanel("Skill usage", "skill-usage-plot", classes="panel")
+                yield PurpleChartPanel(render_hourly_line_chart(hourly_activity(self.dataset)), classes="panel")
+                yield PurpleChartPanel(render_weekday_bar_chart(weekday_activity(self.dataset)), classes="panel")
+                yield PurpleChartPanel(render_bar_chart("Skill usage", skill_counts(self.dataset.skills)), classes="panel")
                 yield WorkflowCompliancePanel(sessions, compliance, classes="panel")
                 yield HeatmapPanel(daily_activity(self.dataset), id="heatmap", classes="panel")
             yield Footer()
-
-        def on_mount(self) -> None:
-            self._plot_hourly_activity()
-            self._plot_weekday_activity()
-            self._plot_skill_usage()
 
         def _summary(self, sessions: int) -> str:
             timestamps = _all_timestamps(self.dataset)
@@ -438,44 +432,5 @@ def _build_metrics_app():
                 f"{len(self.dataset.events)} gate events, {len(self.dataset.skills)} skill events, "
                 f"{sessions} tracked session(s) from {min(timestamps).date()} to {max(timestamps).date()}"
             )
-
-        def _plot_hourly_activity(self) -> None:
-            counts = hourly_activity(self.dataset)
-            plot = self.query_one("#hourly-plot", PlotWidget)
-            plot.clear()
-            x = list(range(24))
-            y = [counts.get(hour, 0) for hour in x]
-            plot.plot(x=x, y=y, line_style=PURPLE, label="activity")
-            plot.set_xlabel("Hour of day")
-            plot.set_ylabel("Events")
-            plot.set_xlimits(0, 23)
-            plot.set_ylimits(ymin=0)
-
-        def _plot_weekday_activity(self) -> None:
-            counts = weekday_activity(self.dataset)
-            plot = self.query_one("#weekday-plot", PlotWidget)
-            plot.clear()
-            labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-            values = [counts.get(day, 0) for day in range(7)]
-            plot.bar(labels, values, width=0.72, bar_style=PURPLE, label="activity")
-            plot.set_xlabel("Day")
-            plot.set_ylabel("Events")
-            plot.set_ylimits(ymin=0)
-
-        def _plot_skill_usage(self) -> None:
-            self._plot_bar("#skill-usage-plot", skill_counts(self.dataset.skills), "Skill", "Invocations")
-
-        def _plot_bar(self, selector: str, counts: Counter[str], xlabel: str, ylabel: str) -> None:
-            plot = self.query_one(selector, PlotWidget)
-            plot.clear()
-            labels = [name for name, _ in counts.most_common(8)]
-            values = [counts[name] for name in labels]
-            if not labels:
-                labels = ["no data"]
-                values = [0]
-            plot.bar(labels, values, width=0.72, bar_style=PURPLE, label=ylabel)
-            plot.set_xlabel(xlabel)
-            plot.set_ylabel(ylabel)
-            plot.set_ylimits(ymin=0)
 
     return MetricsApp
