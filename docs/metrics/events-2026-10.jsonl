@@ -2,3 +2,7 @@
 {"ts":"2026-10-10T00:57:31.120Z","event":"synthesize","detail":null,"source":"aw-gate"}
 {"ts":"2026-10-10T00:57:31.237Z","event":"review","detail":"Full pending-change review before publishing","source":"aw-gate"}
 {"ts":"2026-10-10T00:57:59.349Z","event":"check_workflow_compliance","detail":null,"source":"aw-gate"}
+{"ts":"2026-10-10T22:07:40.883Z","event":"capture","detail":"decision","source":"aw-gate"}
+{"ts":"2026-10-10T22:07:41.091Z","event":"synthesize","detail":null,"source":"aw-gate"}
+{"ts":"2026-10-10T22:09:39.247Z","event":"review","detail":"Migration safety review; disclosed traceability gap","source":"aw-gate"}
+{"ts":"2026-10-10T22:14:01.012Z","event":"check_workflow_compliance","detail":null,"source":"aw-gate"}
